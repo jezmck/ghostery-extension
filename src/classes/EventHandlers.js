@@ -347,10 +347,6 @@ class EventHandlers {
 
 		const app_id = bugDb.db.bugs[bug_id].aid;
 
-		if (app_id === 67) { // GH-2283
-			return { cancel: false };
-		}
-
 		const cat_id = bugDb.db.apps[app_id].cat;
 		const incognito = tabInfo.getTabInfo(tab_id, 'incognito');
 		const tab_host = tabInfo.getTabInfo(tab_id, 'host');
@@ -393,6 +389,11 @@ class EventHandlers {
 				request_id
 			});
 		}, 1);
+
+		if (app_id === 67) { // GH-2283
+			eventMutable.ghosteryWhitelisted = true;
+			return { cancel: false };
+		}
 
 		if ((block && !smartUnblocked) || smartBlocked) {
 			return EventHandlers._blockHelper(eventMutable, tab_id, app_id, bug_id, request_id, fromRedirect);
