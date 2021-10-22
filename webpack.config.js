@@ -53,6 +53,7 @@ module.exports = {
 		licenses_react: [`${LICENSES_DIR}/Licenses.jsx`, `${LICENSES_DIR}/License.jsx`],
 		notifications: [`${CONTENT_SCRIPTS_DIR}/notifications.js`],
 		page_performance: [`${CONTENT_SCRIPTS_DIR}/page_performance.js`],
+		contextual_onboarding: [`${CONTENT_SCRIPTS_DIR}/contextual_onboarding.js`],
 		panel_android_react: [`${PANEL_ANDROID_DIR}/index.jsx`],
 		panel_react: [`${PANEL_DIR}/index.jsx`],
 		purplebox: [`${CONTENT_SCRIPTS_DIR}/purplebox.js`],

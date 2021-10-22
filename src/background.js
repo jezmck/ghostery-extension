@@ -695,6 +695,11 @@ function onMessageHandler(request, sender, callback) {
 		callback();
 		return false;
 	}
+	if (name === 'setContextualOnboardingChoice') {
+		panelData.set(message);
+		conf.show_contextual_onboarding = false;
+		return false;
+	}
 	if (name === 'account.getTheme') {
 		if (conf.current_theme !== 'default') {
 			account.getTheme(conf.current_theme).then(() => {

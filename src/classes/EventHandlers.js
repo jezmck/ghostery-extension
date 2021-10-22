@@ -36,6 +36,8 @@ import { log } from '../utils/common';
 import { isBug } from '../utils/matcher';
 import * as utils from '../utils/utils';
 
+const startupTime = Date.now();
+
 /**
  * This class is a collection of handlers for
  * webNavigation, webRequest and tabs events.
@@ -242,6 +244,17 @@ class EventHandlers {
 			utils.injectScript(details.tabId, 'dist/page_performance.js', '', 'document_idle').catch((err) => {
 				log('onNavigationCompleted injectScript error', err);
 			});
+
+			setTimeout(() => {
+				if (
+					foundBugs.getAppsCount(details.tabId) >= 5
+					&& conf.show_contextual_onboarding
+					&& !conf.enable_ad_block
+					&& Date.now() - startupTime > 1000 * 60 * 3 // show concextual onboarding 3 minutes into browsing session
+				) {
+					utils.injectScript(details.tabId, 'dist/contextual_onboarding.js', '', 'document_idle');
+				}
+			}, 3000);
 		}
 	}
 
