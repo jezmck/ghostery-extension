@@ -23,12 +23,17 @@ const adblockerEngines = DNR_RULES_LIST.reduce((map, name) => {
   };
   return map;
 }, {});
+let pausedDomains = [];
 
-const adblockerStartupPromise = (async function () {
+let adblockerStartupPromise = (async function () {
   await observe('dnrRules', (dnrRules) => {
     DNR_RULES_LIST.forEach((key) => {
       adblockerEngines[key].isEnabled = dnrRules[key];
     });
+  });
+
+  await observe('paused', (paused) => {
+    pausedDomains = paused ? paused.map(String) : [];
   });
 
   await Promise.all(
@@ -43,6 +48,7 @@ const adblockerStartupPromise = (async function () {
       adblockerEngines[engineName].engine = engine;
     }),
   );
+  adblockerStartupPromise = null;
 })();
 
 async function adblockerInjectStylesWebExtension(
@@ -92,28 +98,33 @@ async function adblockerInjectStylesWebExtension(
 
 // copied from https://github.com/cliqz-oss/adblocker/blob/0bdff8559f1c19effe278b8982fb8b6c33c9c0ab/packages/adblocker-webextension/adblocker.ts#L297
 async function adblockerOnMessage(msg, sender, sendResponse) {
-  await adblockerStartupPromise;
+  // Extract hostname from sender's URL
+  const { url = '', frameId } = sender;
+  const parsed = parse(url);
+  const hostname = parsed.hostname || '';
+  const domain = parsed.domain || '';
+
+  if (pausedDomains.includes(domain)) {
+    return;
+  }
+
+  if (adblockerStartupPromise) {
+    await adblockerStartupPromise;
+  }
 
   const genericStyles = [];
   const specificStyles = [];
   let specificFrameId = null;
   const specificResponses = [];
 
-  Object.keys(adblockerEngines).forEach((engineName) => {
+  Object.entries(adblockerEngines).forEach(([name, { engine, isEnabled }]) => {
     if (
-      adblockerEngines[engineName].isEnabled === false ||
-      engineName === 'annoyances' // Ensure Never-Consent has a chance to opt-out from tracking
+      !isEnabled ||
+      name === 'annoyances' // Ensure Never-Consent has a chance to opt-out from tracking
     ) {
       return;
     }
 
-    const { engine } = adblockerEngines[engineName];
-
-    // Extract hostname from sender's URL
-    const { url = '', frameId } = sender;
-    const parsed = parse(url);
-    const hostname = parsed.hostname || '';
-    const domain = parsed.domain || '';
     // Once per tab/page load we inject base stylesheets. These are always
     // the same for all frames of a given page because they do not depend on
     // a particular domain and cannot be cancelled using unhide rules.
@@ -265,18 +276,20 @@ ${scripts.join('\n\n')}}
   );
 }
 
-chrome.webNavigation.onCommitted.addListener((details) => {
+chrome.webNavigation.onCommitted.addListener(async (details) => {
   const { hostname, domain } = parse(details.url);
   if (!hostname) {
     return;
   }
 
-  Object.keys(adblockerEngines).forEach((engineName) => {
-    if (adblockerEngines[engineName].isEnabled === false) {
+  if (adblockerStartupPromise) {
+    await adblockerStartupPromise;
+  }
+
+  Object.values(adblockerEngines).forEach(({ isEnabled, engine }) => {
+    if (isEnabled === false) {
       return;
     }
-
-    const { engine } = adblockerEngines[engineName];
 
     const { active, scripts } = engine.getCosmeticsFilters({
       url: details.url,
