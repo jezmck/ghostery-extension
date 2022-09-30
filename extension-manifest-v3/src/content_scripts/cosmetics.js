@@ -10,4 +10,8 @@
  */
 import { injectCosmetics } from '@cliqz/adblocker-webextension-cosmetics';
 
-injectCosmetics(window);
+injectCosmetics(window, true, (args) =>
+  chrome.runtime
+    .sendMessage({ action: 'getCosmeticsFilters', ...args })
+    .then((result) => result || {}),
+);
